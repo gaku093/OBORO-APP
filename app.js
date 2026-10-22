@@ -162,13 +162,16 @@ async function doAuth(create){
   const msg = $("#a_msg");
   if (!email || pass.length < 6){ msg.textContent = "Informe o e-mail e uma senha de 6 ou mais caracteres."; return; }
   msg.textContent = create ? "Criando conta…" : "Entrando…";
-  const r = create ? await sb.auth.signUp({email, password:pass}) : await sb.auth.signInWithPassword({email, password:pass});
+  const r = create ? await sb.auth.signUp({email, password:pass, options:{emailRedirectTo:"https://gaku093.github.io/OBORO-APP/#perfil"}}) : await sb.auth.signInWithPassword({email, password:pass});
   if (r.error){
     const m = r.error.message || "";
     msg.textContent = /Invalid login/i.test(m) ? "E-mail ou senha incorretos." : /already/i.test(m) ? "Este e-mail já tem conta. Toque em Entrar." : /confirm/i.test(m) ? "Confirme seu e-mail antes de entrar." : "Não foi possível continuar. Tente de novo.";
     return;
   }
-  if (create && !r.data.session){ S.authMsg = "Conta criada. Confirme seu e-mail e depois toque em Entrar."; msg.textContent = S.authMsg; return; }
+  if (create && !r.data.session){
+    const r2 = await sb.auth.signInWithPassword({email, password:pass});
+    if (r2.error){ msg.textContent = "Conta criada. Toque em Entrar para continuar."; return; }
+  }
   S.authMsg = "";
 }
 function setUser(u){
