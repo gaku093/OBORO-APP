@@ -30,7 +30,7 @@
 :root[data-theme="dark"] .cover{box-shadow:0 0 0 2px rgba(252,153,0,.35)}
 :root[data-theme="dark"] .btn{box-shadow:0 3px 0 rgba(0,0,0,.45)}
 *{box-sizing:border-box}
-html,body{min-height:100%}
+html,body{min-height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
