@@ -25,7 +25,8 @@ const S = {
   view:"home", prev:[], works:[], reads:[], user:null, authMsg:"",
   favs:new Set(ls.get("oboro:favs", [])),
   me:{id:null, name:""},
-  q:"", genre:"", detailId:null, pub:null, reader:null, confirmDel:false, busy:false
+  q:"", genre:"", detailId:null, pub:null, reader:null, confirmDel:false, busy:false,
+  loaded:false, loadErr:false, lastFocus:null
 };
 const SUPABASE_URL = "https://dvreimjduimzwouxkrdl.supabase.co";
 const SUPABASE_KEY = "sb_publishable_OyUFfiDZcDaPfS0F8Uy-2w_3QGafWDr";
@@ -51,8 +52,13 @@ async function loadAll(){
     S.works = w.data.map(mapWork);
     const r = await sb.from("reads").select("work_id,user_id,created_at");
     S.reads = (r.data || []).map(x => ({w:x.work_id, u:x.user_id, at:Date.parse(x.created_at)}));
+    S.loaded = true; S.loadErr = false;
     refresh();
-  }catch(e){ toast("Sem conexão com o servidor. Tente de novo."); }
+  }catch(e){
+    S.loadErr = !S.loaded;
+    toast("Sem conexão com o servidor. Tente de novo.");
+    if (S.loadErr) refresh();
+  }
 }
 async function blobOf(dataUrl){ return (await fetch(dataUrl)).blob(); }
 async function upload(path, dataUrl){
@@ -79,7 +85,7 @@ async function getPages(wid, ci){
 /* ---------- telas ---------- */
 function coverHTML(w, cls){
   const tag = w.original ? '<span class="tag">original</span>' : "";
-  if (w.cover) return `<span class="cover ${cls||""}"><img src="${w.cover}" alt="">${tag}</span>`;
+  if (w.cover) return `<span class="cover ${cls||""}"><img src="${w.cover}" alt="" loading="lazy" decoding="async">${tag}</span>`;
   return `<span class="cover ph ${cls||""}">${esc(w.title)}</span>`;
 }
 function cardHTML(w){
@@ -93,6 +99,8 @@ function topbar(){
   return `<header class="top">${left}<button class="ibtn mark${S.view==="library"?" on":""}" data-act="tab" data-tab="library" aria-label="Meus salvos">${I.mark}</button></header>`;
 }
 function emptyCommunity(){
+  if (!S.loaded && !S.loadErr) return `<div class="empty" role="status"><p>Carregando obras…</p></div>`;
+  if (S.loadErr) return `<div class="empty"><p>Não foi possível carregar as obras.</p><button class="btn" data-act="reload">Tentar de novo</button></div>`;
   return `<div class="empty"><p>Ainda não há quadrinhos da comunidade. Publique o primeiro e ele aparece aqui para todo mundo.</p><button class="btn" data-act="newwork">${I.plus}Publicar QH</button></div>`;
 }
 function homeHTML(){
@@ -117,6 +125,7 @@ function resultsHTML(){
   const list = allWorks().filter(w =>
     (!S.genre || w.genre === S.genre) &&
     (!q || [w.title, w.authorName, w.genre].some(x => String(x||"").toLowerCase().includes(q))));
+  if (!list.length && !S.loaded && !S.loadErr) return `<div class="empty" role="status"><p>Carregando obras…</p></div>`;
   if (!list.length) return `<div class="empty"><p>Nada encontrado${q ? ` para “${esc(S.q.trim())}”` : ""}. Tente outro gênero ou termo.</p></div>`;
   return `<div class="grid">${list.map(cardHTML).join("")}</div>`;
 }
@@ -162,12 +171,19 @@ async function doAuth(create){
   if (!sb) return toast("Sem conexão com o servidor.");
   const email = ($("#a_email").value || "").trim(), pass = $("#a_pass").value || "";
   const msg = $("#a_msg");
+  if (S.busy) return;
   if (!email || pass.length < 6){ msg.textContent = "Informe o e-mail e uma senha de 6 ou mais caracteres."; return; }
   msg.textContent = create ? "Criando conta…" : "Entrando…";
-  const r = create ? await sb.auth.signUp({email, password:pass, options:{emailRedirectTo:"https://gaku093.github.io/OBORO-APP/#perfil"}}) : await sb.auth.signInWithPassword({email, password:pass});
+  const btns = document.querySelectorAll("#authform button");
+  S.busy = true; btns.forEach(b => b.disabled = true);
+  let r;
+  try{
+    r = create ? await sb.auth.signUp({email, password:pass, options:{emailRedirectTo:"https://gaku093.github.io/OBORO-APP/#perfil"}}) : await sb.auth.signInWithPassword({email, password:pass});
+  }catch(e){ r = {error:{message:"network"}}; }
+  S.busy = false; btns.forEach(b => b.disabled = false);
   if (r.error){
     const m = r.error.message || "";
-    msg.textContent = /Invalid login/i.test(m) ? "E-mail ou senha incorretos." : /already/i.test(m) ? "Este e-mail já tem conta. Toque em Entrar." : /confirm/i.test(m) ? "Confirme seu e-mail antes de entrar." : "Não foi possível continuar. Tente de novo.";
+    msg.textContent = /network|fetch/i.test(m) ? "Sem conexão. Verifique a internet." : /Invalid login/i.test(m) ? "E-mail ou senha incorretos." : /already/i.test(m) ? "Este e-mail já tem conta. Toque em Entrar." : /confirm/i.test(m) ? "Confirme seu e-mail antes de entrar." : "Não foi possível continuar. Tente de novo.";
     return;
   }
   if (create && !r.data.session){
@@ -184,7 +200,18 @@ function setUser(u){
 let nameT;
 function saveName(v){
   clearTimeout(nameT);
-  nameT = setTimeout(() => { if (sb && S.user) sb.auth.updateUser({data:{name:v.trim()}}).then(() => {}, () => {}); }, 700);
+  nameT = setTimeout(async () => {
+    if (!sb || !S.user) return;
+    const name = v.trim();
+    try{
+      await sb.auth.updateUser({data:{name}});
+      // mantém o nome nas obras já publicadas (a tabela exige de 1 a 40 caracteres)
+      if (name){
+        const r = await sb.from("works").update({author_name:name}).eq("author_id", S.me.id);
+        if (!r.error) S.works.forEach(w => { if (w.authorId === S.me.id) w.authorName = name; });
+      }
+    }catch(e){}
+  }, 700);
 }
 
 function profileHTML(){
@@ -295,9 +322,21 @@ function go(view, opts){
   if (opts.push) S.prev.push(S.view); else S.prev = [];
   S.view = view; S.confirmDel = false;
   render(); window.scrollTo(0, 0);
-  if (!opts.push){ try{ history.replaceState(null, "", "#" + {home:"inicio",search:"buscar",profile:"perfil",library:"salvos"}[view]); }catch(e){} }
+  try{
+    if (opts.push) history.pushState({v:1}, "");
+    else history.replaceState(null, "", "#" + {home:"inicio",search:"buscar",profile:"perfil",library:"salvos"}[view]);
+  }catch(e){}
 }
-function back(){ S.view = S.prev.pop() || "home"; S.confirmDel = false; render(); window.scrollTo(0, 0); }
+function stepBack(){ S.view = S.prev.pop() || "home"; S.confirmDel = false; render(); window.scrollTo(0, 0); }
+function back(){
+  if (S.view === "publish" && S.pub && (S.pub.pages.length || S.pub.cover || S.pub.title || S.pub.chTitle) && !confirm("Descartar o que você preencheu?")) return;
+  if (history.state && history.state.v) history.back(); else stepBack();
+}
+// botão voltar do celular: fecha o leitor ou volta uma tela, em vez de sair do app
+window.addEventListener("popstate", () => {
+  if (!$("#reader").hidden){ hardCloseReader(); return; }
+  if (S.prev.length) stepBack();
+});
 let toastT;
 function toast(msg){
   const t = $("#toast"); t.textContent = msg; t.hidden = false;
@@ -415,10 +454,17 @@ async function submitPub(){
 async function openReader(wid, ci){
   const w = findWork(wid); if (!w || !(w.chapters || [])[ci]) return;
   const R = $("#reader");
+  const wasOpen = !R.hidden;
   S.reader = {wid, ci, pages:null, i:0};
+  if (!wasOpen){
+    S.lastFocus = document.activeElement;
+    try{ history.pushState({r:1}, ""); }catch(e){}
+  }
   R.hidden = false; document.body.style.overflow = "hidden";
-  R.innerHTML = readerShell(w, ci, '<div class="rmsg">Carregando páginas…</div>');
+  $("#app").inert = true;
+  R.innerHTML = readerShell(w, ci, '<div class="rmsg" role="status">Carregando páginas…</div>');
   R.scrollTop = 0;
+  const cb = R.querySelector("[data-act=closereader]"); if (cb) cb.focus();
   try{
     const pages = await getPages(wid, ci);
     if (!S.reader || S.reader.wid !== wid || S.reader.ci !== ci) return;
@@ -437,12 +483,14 @@ function drawReader(){
   const R = $("#reader"), chs = w.chapters, paged = w.mode === "ltr" || w.mode === "rtl";
   let inner;
   if (!r.pages.length) inner = '<div class="rmsg">Este capítulo não tem páginas.</div>';
-  else if (!paged) inner = r.pages.map((s, i) => `<img src="${s}" alt="Página ${i+1}" loading="lazy">`).join("");
+  else if (!paged) inner = r.pages.map((s, i) => `<img src="${s}" alt="Página ${i+1}" loading="lazy" decoding="async">`).join("");
   else {
     const rtl = w.mode === "rtl";
     inner = `<div class="rpage"><button class="zone l" data-act="turn" data-d="${rtl?1:-1}" aria-label="${rtl?"Próxima página":"Página anterior"}"></button>
       <img src="${r.pages[r.i]}" alt="Página ${r.i+1}"><button class="zone r" data-act="turn" data-d="${rtl?-1:1}" aria-label="${rtl?"Página anterior":"Próxima página"}"></button></div>
-      <div class="counter">${r.i+1} / ${r.pages.length}</div>`;
+      <div class="counter" aria-live="polite">${r.i+1} / ${r.pages.length}</div>`;
+    // pré-carrega as páginas vizinhas para a virada ser instantânea
+    [r.i - 1, r.i + 1].forEach(k => { if (r.pages[k]) new Image().src = r.pages[k]; });
   }
   const atEnd = !paged || r.i >= r.pages.length - 1;
   const foot = atEnd ? `<div class="rfoot">${r.ci > 0 ? `<button class="btn" data-act="read" data-id="${esc(w.id)}" data-ch="${r.ci-1}">Capítulo anterior</button>` : ""}
@@ -450,7 +498,31 @@ function drawReader(){
     <button class="btn" data-act="closereader">Fechar</button></div>` : "";
   R.innerHTML = readerShell(w, r.ci, inner + foot);
 }
-function closeReader(){ S.reader = null; const R = $("#reader"); R.hidden = true; R.innerHTML = ""; document.body.style.overflow = ""; }
+function hardCloseReader(){
+  S.reader = null; const R = $("#reader"); R.hidden = true; R.innerHTML = "";
+  document.body.style.overflow = ""; $("#app").inert = false;
+  const f = S.lastFocus; S.lastFocus = null;
+  if (f && document.contains(f)) try{ f.focus({preventScroll:true}); }catch(e){}
+  refresh();
+}
+function closeReader(){
+  if (history.state && history.state.r) history.back(); else hardCloseReader();
+}
+function turnPage(d){
+  const r = S.reader; if (!r || !r.pages) return;
+  const n = r.i + d;
+  if (n >= 0 && n < r.pages.length){ r.i = n; drawReader(); $("#reader").scrollTop = 0; }
+}
+// deslizar para virar página (no mangá da direita para a esquerda, deslizar para a direita avança)
+let tx = 0, ty = 0;
+document.addEventListener("touchstart", ev => { if (S.reader && ev.touches.length === 1){ tx = ev.touches[0].clientX; ty = ev.touches[0].clientY; } }, {passive:true});
+document.addEventListener("touchend", ev => {
+  const r = S.reader; if (!r || !r.pages || !ev.changedTouches.length) return;
+  const w = findWork(r.wid); if (!w || (w.mode !== "ltr" && w.mode !== "rtl")) return;
+  const dx = ev.changedTouches[0].clientX - tx, dy = ev.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  turnPage((w.mode === "rtl" ? dx > 0 : dx < 0) ? 1 : -1);
+}, {passive:true});
 
 /* ---------- eventos ---------- */
 document.addEventListener("click", async ev => {
@@ -467,7 +539,7 @@ document.addEventListener("click", async ev => {
     case "theme": setTheme(d.t); render(); break;
     case "newwork": newPub(null); break;
     case "signup": doAuth(true); break;
-    case "logout": await sb.auth.signOut(); toast("Você saiu."); break;
+    case "logout": try{ await sb.auth.signOut(); toast("Você saiu."); }catch(e){ toast("Não foi possível sair. Tente de novo."); } break;
     case "newch": newPub(d.id); break;
     case "rmpage": S.pub.pages.splice(+d.i, 1); renderThumbs(); break;
     case "askdel": S.confirmDel = true; render(); break;
@@ -481,12 +553,8 @@ document.addEventListener("click", async ev => {
     }
     case "read": openReader(d.id, +d.ch); break;
     case "closereader": closeReader(); break;
-    case "turn": {
-      const r = S.reader; if (!r || !r.pages) break;
-      const n = r.i + (+d.d);
-      if (n >= 0 && n < r.pages.length){ r.i = n; drawReader(); $("#reader").scrollTop = 0; }
-      break;
-    }
+    case "turn": turnPage(+d.d); break;
+    case "reload": loadAll(); break;
   }
 });
 document.addEventListener("input", ev => {
@@ -515,7 +583,7 @@ document.addEventListener("keydown", ev => {
   if (r && r.pages && (ev.key === "ArrowRight" || ev.key === "ArrowLeft")){
     const w = findWork(r.wid); if (!w || (w.mode !== "ltr" && w.mode !== "rtl")) return;
     const dir = (ev.key === "ArrowRight" ? 1 : -1) * (w.mode === "rtl" ? -1 : 1);
-    const n = r.i + dir; if (n >= 0 && n < r.pages.length){ r.i = n; drawReader(); $("#reader").scrollTop = 0; }
+    turnPage(dir);
   }
 });
 

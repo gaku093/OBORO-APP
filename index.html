@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Oboro</title>
+<meta name="theme-color" content="#FC9900">
+<meta name="description" content="Oboro: leia e publique quadrinhos da comunidade.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -18,7 +21,7 @@
   </div></nav>
 </div>
 <div id="reader" class="reader" hidden></div>
-<div id="toast" class="toast" role="status" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="app.js"></script>
