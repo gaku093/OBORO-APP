@@ -253,3 +253,67 @@ h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
 .btn:disabled,.btn[disabled]{pointer-events:none}
 .toast[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* topo: dashboard + salvos */
+.topr{display:flex;align-items:center;gap:6px}
+.ibtn.dash svg{width:26px;height:26px}
+.ibtn.dash.on{background:var(--accent)}
+.ibtn.dash.on svg{fill:#111}
+
+/* perfil */
+.me .nm{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.1;overflow-wrap:anywhere;color:var(--title);text-shadow:2px 2px 0 var(--edge);margin:0}
+:root[data-theme="dark"] .me .nm{text-shadow:none}
+h1.nm.h1{margin:0;font-size:30px}
+.plusbadge{display:inline-grid;place-items:center;width:24px;height:24px;margin-left:8px;border-radius:50%;background:var(--accent);color:#111;border:2px solid #111;font-family:var(--font-display);font-weight:700;font-size:16px;line-height:1;vertical-align:middle}
+.bio{background:var(--card);color:var(--card-ink);border:3px solid var(--edge);border-radius:20px;padding:12px 16px;margin:6px 0 16px;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:600}
+.bio.mute{color:var(--card-mute)}
+.subgap{margin-top:16px}
+.wallet{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;background:var(--card);color:var(--card-ink);border:3px solid var(--edge);border-radius:20px;padding:12px 16px;box-shadow:var(--shadow);text-align:left}
+.wallet .wl{display:flex;align-items:center;gap:10px}
+.wallet b{display:block;font-family:var(--font-display);font-size:26px;line-height:1}
+.wallet small{font-size:12px;font-weight:800;color:var(--card-mute);text-transform:uppercase;letter-spacing:.05em}
+.wallet .wr{display:flex;align-items:center;gap:4px;font-weight:800;font-size:14px}
+.wallet .wr svg{width:18px;height:18px}
+.cn svg{width:34px;height:34px;display:block}
+.cn.big svg{width:48px;height:48px}
+
+/* OBORO+ */
+.plushero{background:var(--card);color:var(--card-ink);border:3px solid var(--edge);border-radius:28px;padding:18px;box-shadow:5px 5px 0 var(--edge);display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.bal{display:flex;align-items:center;gap:12px}
+.bal b{font-family:var(--font-display);font-size:48px;line-height:1;font-variant-numeric:tabular-nums}
+.bal small{font-size:13px;font-weight:800;color:var(--card-mute);text-transform:uppercase;letter-spacing:.05em}
+.pst{margin:0;font-weight:800}
+.perks{margin:0 0 14px;padding-left:20px;font-weight:700;display:flex;flex-direction:column;gap:4px}
+.txr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:2px solid var(--line);font-weight:700}
+.txr:first-of-type{border-top:0}
+.txr small{display:block;font-size:12px;color:var(--card-mute)}
+.txr b{font-family:var(--font-display);font-size:20px}
+.txr .neg{color:var(--danger)}
+.btn.sm{min-height:42px;padding:8px 14px;font-size:14px;border-width:2px}
+.btn.alt svg{fill:currentColor}
+.btn.alt .cn svg,.btn.alt svg circle{fill:#FFE066}
+
+/* gerenciar obras */
+.mw{border-top:2px solid var(--line)}
+.mw:first-of-type{border-top:0}
+.mw .work{border-top:0}
+.mpanel{padding:4px 0 14px;display:flex;flex-direction:column;gap:10px}
+.mpanel h4{font-family:var(--font-display);font-size:16px;margin:6px 0 0}
+.renform label{display:block;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.rn{display:flex;gap:8px}
+.rn input{flex:1;min-width:0;background:var(--bg);color:var(--ink);border:3px solid var(--edge);border-radius:12px;padding:9px 12px;font-weight:800}
+:root:not([data-theme="dark"]) .rn input{background:#FFF6E5;color:#1A1108}
+.mch{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mch .t{min-width:0;font-weight:800;overflow-wrap:anywhere}
+.mch small{display:block;font-size:12px;color:var(--card-mute);font-weight:700}
+
+/* comentários */
+.cms{padding:4px 14px}
+.cmi{padding:12px 0;border-top:2px solid var(--line)}
+.cmi:first-child{border-top:0}
+.cmi b{font-weight:800}
+.cmi .m{margin-left:8px;font-size:12px;color:var(--card-mute);font-weight:700}
+.cmi p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:600}
+.link.sm{font-size:13px;color:var(--danger)}
+#cmform{margin-bottom:14px}
+.btn.alt[aria-label="Curtir"][aria-pressed=true] svg{fill:#B3261E}
