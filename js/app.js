@@ -52,7 +52,7 @@ const S = {
   view:"home", prev:[], works:[], reads:[], user:null,
   favs:new Set(ls.get("oboro:favs", [])),
   me:{id:null, name:"", bio:""},
-  q:"", genre:"", detailId:null, authorId:null, pub:null, reader:null,
+  q:"", genre:"", detailId:null, authorId:null, authorName:null, pub:null, reader:null,
   confirmDel:false, busy:false, loaded:false, loadErr:false, lastFocus:null,
   authMode:"login", authEmail:"", authMsg:"", recovery:false, theme:"light",
   editProfile:false, dashOpen:null,
@@ -69,6 +69,8 @@ const siteUrl = () => CFG.SITE_URL || (location.origin + location.pathname);
 /* ---------- dados ---------- */
 const allWorks = () => ORIGINALS.concat(S.works);
 const findWork = id => allWorks().find(w => w.id === id);
+// Originais do Oboro são arquivos estáticos (sem conta dona): ligam-se ao perfil pelo nome do autor.
+const myOriginals = () => S.user && S.me.name ? ORIGINALS.filter(w => norm(w.authorName) === norm(S.me.name)) : [];
 const myWorks = () => S.works.filter(w => S.user && w.authorId === S.me.id);
 const readersOf = id => new Set(S.reads.filter(r => r.w === id && r.u !== S.me.id).map(r => r.u)).size;
 
@@ -465,15 +467,17 @@ function libraryHTML(){
     : `<div class="empty"><p>Toque em Salvar na página de uma obra para guardar aqui.</p><button class="btn" data-act="tab" data-tab="home">Ver obras</button></div>`);
 }
 function authorHTML(){
-  const list = S.works.filter(w => w.authorId === S.authorId);
-  const own = !!S.user && S.authorId === S.me.id;
-  const name = list[0] ? list[0].authorName : (own && S.me.name) || "Autor";
-  const bio = own ? S.me.bio : (S.bios[S.authorId] || "");
+  const byName = !S.authorId && !!S.authorName;
+  const list = byName ? ORIGINALS.filter(w => norm(w.authorName) === norm(S.authorName)) : S.works.filter(w => w.authorId === S.authorId);
+  const own = !!S.user && (byName ? norm(S.authorName) === norm(S.me.name) : S.authorId === S.me.id);
+  const name = byName ? S.authorName : (list[0] ? list[0].authorName : (own && S.me.name) || "Autor");
+  const bio = own ? S.me.bio : (byName ? "" : (S.bios[S.authorId] || ""));
+  const all = own ? myOriginals().concat(myWorks()) : list;
   return `<div class="me"><span class="avatar"><img src="${IMG.avatar}" alt=""></span><div class="who"><h1 class="h1 nm">${esc(name)}</h1></div></div>
     ${bio ? `<p class="bio">${esc(bio)}</p>` : ""}
     ${own ? `<div class="row"><button class="btn" data-act="editprofile">Editar perfil</button></div>` : ""}
-    <p class="sub subgap">${list.length} ${list.length === 1 ? "obra publicada" : "obras publicadas"}</p>` +
-    (list.length ? `<div class="grid">${list.map(cardHTML).join("")}</div>` : `<div class="empty"><p>Este autor ainda não tem obras.</p></div>`);
+    <p class="sub subgap">${all.length} ${all.length === 1 ? "obra publicada" : "obras publicadas"}</p>` +
+    (all.length ? `<div class="grid">${all.map(cardHTML).join("")}</div>` : `<div class="empty"><p>Este autor ainda não tem obras.</p></div>`);
 }
 
 function dashData(){
@@ -491,7 +495,9 @@ function dashData(){
     days.push({label:DAYS[d0.getDay()], n:rs.filter(r => r.at >= d0.getTime() && r.at < d1.getTime()).length});
   }
   const likes = mine.reduce((n,w) => n + likesOf(w.id), 0);
-  return {mine, chapters, pages, readers, likes, days};
+  const orig = myOriginals();
+  const oc = orig.reduce((n,w) => n + w.chapters.length, 0), op = orig.reduce((n,w) => n + w.chapters.reduce((m,c) => m + c.pages, 0), 0);
+  return {mine, orig, chapters:chapters + oc, pages:pages + op, readers, likes, days};
 }
 function themeChips(){
   return `<h2 class="h2">tema</h2><div class="chips" role="group" aria-label="Tema do app">
@@ -611,6 +617,7 @@ function profileHTML(){
     ${S.me.bio ? `<p class="bio">${esc(S.me.bio)}</p>` : `<p class="bio mute">Você ainda não escreveu uma bio.</p>`}
     <div class="row"><button class="btn" data-act="editprofile">Editar perfil</button>
     <button class="btn ghost" data-act="logout">Sair</button></div>
+    ${(() => { const l = myOriginals().concat(myWorks()); return l.length ? `<h2 class="h2">minhas obras</h2><div class="grid">${l.map(cardHTML).join("")}</div>` : ""; })()}
     <h2 class="h2">oboro+</h2>${walletCardHTML()}
     ${themeChips()}`;
 }
@@ -638,11 +645,14 @@ function dashboardHTML(){
         <span class="meter" aria-hidden="true"><i style="width:${Math.round(r/topR*100)}%"></i></span></span>
       <span class="n">${fmt(r)}<small>leitores</small></span></button>${panel}</div>`;
   }).join("");
+  const orows = D.orig.map(w => `<div class="mw"><button class="work" data-act="open" data-id="${esc(w.id)}">
+      <span class="thumb"><img src="${esc(w.cover)}" alt="" loading="lazy" decoding="async"></span>
+      <span><span class="t">${esc(w.title)}</span><br><span class="m">${w.chapters.length} cap. · ${esc(w.genre)} · original Oboro</span></span><span class="n"></span></button></div>`).join("");
   return `<h1 class="h1">dashboard</h1>
     <div class="row"><button class="btn" data-act="newwork">${I.plus}Publicar QH</button><button class="btn alt" data-act="plus">${I.coin}${S.wallet ? fmt(S.wallet.coins) : "OboroCoin"}</button></div>
     <h2 class="h2">resumo</h2>
     <div class="tiles">
-      <div class="tile"><b>${fmt(D.mine.length)}</b><span>obras</span></div>
+      <div class="tile"><b>${fmt(D.mine.length + D.orig.length)}</b><span>obras</span></div>
       <div class="tile"><b>${fmt(D.chapters)}</b><span>capítulos</span></div>
       <div class="tile"><b>${fmt(D.pages)}</b><span>páginas</span></div>
       <div class="tile"><b>${fmt(D.readers)}</b><span>leitores</span></div>
@@ -653,7 +663,7 @@ function dashboardHTML(){
       <div class="days">${D.days.map(d => `<span>${d.label}</span>`).join("")}</div></div>
     <h2 class="h2">gerenciar obras</h2>
     <div class="panel"><p class="sub">Toque numa obra para renomear, adicionar páginas, criar capítulo ou excluir</p>
-      ${rows || `<div class="empty flat"><p>Você ainda não publicou nada. Sua primeira obra aparece aqui com as métricas.</p></div>`}</div>`;
+      ${(orows + rows) || `<div class="empty flat"><p>Você ainda não publicou nada. Sua primeira obra aparece aqui com as métricas.</p></div>`}</div>`;
 }
 const TXR = {daily:"Bônus diário", plus:"Assinatura OBORO+"};
 function plusHTML(){
@@ -690,7 +700,7 @@ function detailHTML(){
   const saved = S.favs.has(w.id);
   const chs = w.chapters || [];
   return `<div class="hero">${coverHTML(w)}<div><h1>${esc(w.title)}</h1>
-      ${w.authorId ? `<button class="by lnk" data-act="author" data-id="${esc(w.authorId)}">por ${esc(w.authorName || "autor")}</button>` : `<div class="by">por ${esc(w.authorName || "autor")}</div>`}
+      ${w.authorId ? `<button class="by lnk" data-act="author" data-id="${esc(w.authorId)}">por ${esc(w.authorName || "autor")}</button>` : w.original ? `<button class="by lnk" data-act="authorn" data-n="${esc(w.authorName)}">por ${esc(w.authorName || "autor")}</button>` : `<div class="by">por ${esc(w.authorName || "autor")}</div>`}
       <div class="chips"><span class="chip on">${esc(w.genre)}</span><span class="chip">${esc(w.age)}</span></div></div></div>
     <div class="row">
       <button class="btn" data-act="read" data-id="${esc(w.id)}" data-ch="0" ${chs.length ? "" : "disabled"}>${I.book}${chs.length ? "Ler capítulo 1" : "Sem capítulos"}</button>
@@ -1024,7 +1034,8 @@ document.addEventListener("click", async ev => {
   switch (a){
     case "tab": if (S.busy && S.view === "publish") return toast("Aguarde o envio terminar."); go(d.tab); break;
     case "open": S.detailId = d.id; go("detail", {push:true}); loadComments(d.id); break;
-    case "author": S.authorId = d.id; go("author", {push:true}); break;
+    case "author": S.authorId = d.id; S.authorName = null; go("author", {push:true}); break;
+    case "authorn": S.authorId = null; S.authorName = d.n; go("author", {push:true}); break;
     case "back": back(); break;
     case "genre": S.genre = d.g; $("#genres").innerHTML = genreChips(); $("#results").innerHTML = resultsHTML(); break;
     case "fav": toggleFav(d.id); break;
