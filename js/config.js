@@ -5,7 +5,7 @@
  * Por isso aqui só pode ficar o que foi feito para ser público:
  *   - SUPABASE_URL: endereço do projeto;
  *   - SUPABASE_KEY: chave "publishable" (sb_publishable_...) ou a legada "anon".
- * A segurança vem do RLS e das políticas de Storage (ver supabase/migrations),
+ * A segurança vem do RLS e das políticas de Storage (ver supabase/migrations/),
  * NÃO de esconder esta chave.
  *
  * NUNCA coloque aqui: service_role, sb_secret_..., senhas ou tokens de admin.

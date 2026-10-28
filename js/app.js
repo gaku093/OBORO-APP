@@ -2,14 +2,14 @@
 /* OBORO — leitura e autopublicação de quadrinhos. */
 
 const CFG = window.OBORO_CONFIG || {};
-const IMG = {avatar:"avatar.jpg"};
+const IMG = {avatar:"assets/avatar.jpg"};
 const BUCKET = "oboro";
 // Originais exclusivas do Oboro: os arquivos ficam no próprio site (não no Storage), então "paths" já são endereços finais.
 const ORIGINALS = [{
   id:"magic", original:true, authorName:"Oboro", title:"MAGIC", genre:"Fantasia", age:"16+", mode:"v",
   synopsis:"Em um mundo onde a magia define o valor de alguém, Eiichiro Yuto é um jovem preso ao nível Subta 0.1. Na escola de magia, ele sofre bullying por sua fraqueza e luta para provar que pode superar seus limites.",
-  cover:"magic-capa.jpg", updatedAt:Date.UTC(2026, 9, 28),
-  chapters:[{id:"magic-1", title:"Magia é ruim?", pages:2, paths:["magic-1.png","magic-2.png"], at:Date.UTC(2026, 9, 28)}]
+  cover:"assets/magic/capa.jpg", updatedAt:Date.UTC(2026, 9, 28),
+  chapters:[{id:"magic-1", title:"Magia é ruim?", pages:2, paths:["assets/magic/1.png","assets/magic/2.png"], at:Date.UTC(2026, 9, 28)}]
 }];
 const GENRES = ["Ação","Aventura","Comédia","Drama","Fantasia","Ficção científica","Romance","Slice of life","Terror"];
 const AGES = ["Livre","12+","14+","16+","18+"];
