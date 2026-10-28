@@ -4,7 +4,13 @@
 const CFG = window.OBORO_CONFIG || {};
 const IMG = {avatar:"avatar.jpg"};
 const BUCKET = "oboro";
-const ORIGINALS = [];
+// Originais exclusivas do Oboro: os arquivos ficam no próprio site (não no Storage), então "paths" já são endereços finais.
+const ORIGINALS = [{
+  id:"magic", original:true, authorName:"Oboro", title:"MAGIC", genre:"Fantasia", age:"16+", mode:"v",
+  synopsis:"Em um mundo onde a magia define o valor de alguém, Eiichiro Yuto é um jovem preso ao nível Subta 0.1. Na escola de magia, ele sofre bullying por sua fraqueza e luta para provar que pode superar seus limites.",
+  cover:"magic-capa.jpg", updatedAt:Date.UTC(2026, 9, 28),
+  chapters:[{id:"magic-1", title:"Magia é ruim?", pages:2, paths:["magic-1.png","magic-2.png"], at:Date.UTC(2026, 9, 28)}]
+}];
 const GENRES = ["Ação","Aventura","Comédia","Drama","Fantasia","Ficção científica","Romance","Slice of life","Terror"];
 const AGES = ["Livre","12+","14+","16+","18+"];
 const MODES = {v:"Vertical (webtoon)", ltr:"Esquerda para direita", rtl:"Direita para esquerda (mangá)"};
@@ -247,10 +253,11 @@ async function loadFavs(){
     if (r.error) return;
     const server = new Set(r.data.map(x => x.work_id));
     const known = new Set(S.works.map(w => w.id));
+    const keep = ORIGINALS.map(w => w.id).filter(id => S.favs.has(id));   // salvos de originais ficam só no aparelho
     const local = ls.get("oboro:favs", []).filter(id => known.has(id));
     const add = local.filter(id => !server.has(id));
     if (add.length) await sb.from("favorites").upsert(add.map(id => ({work_id:id})), {onConflict:"user_id,work_id", ignoreDuplicates:true});
-    S.favs = new Set(Array.from(server).concat(add));
+    S.favs = new Set(Array.from(server).concat(add, keep));
     ls.set("oboro:favs", Array.from(S.favs));
   }catch(e){}
 }
@@ -258,7 +265,7 @@ async function toggleFav(id){
   const had = S.favs.has(id);
   had ? S.favs.delete(id) : S.favs.add(id);
   ls.set("oboro:favs", Array.from(S.favs)); render();
-  if (!sb || !S.user) return;
+  if (!sb || !S.user || (findWork(id) || {}).original) return;
   const r = had ? await sb.from("favorites").delete().eq("work_id", id).eq("user_id", S.me.id) : await sb.from("favorites").insert({work_id:id});
   if (r.error && r.error.code !== "23505"){
     had ? S.favs.add(id) : S.favs.delete(id);
@@ -268,12 +275,12 @@ async function toggleFav(id){
 }
 function recordRead(wid){
   const w = findWork(wid);
-  if (!sb || !S.user || !w || w.authorId === S.me.id) return;
+  if (!sb || !S.user || !w || w.original || w.authorId === S.me.id) return;
   sb.from("reads").upsert({work_id:wid, user_id:S.me.id}, {onConflict:"work_id,user_id", ignoreDuplicates:true}).then(() => {}, () => {});
 }
 async function getPages(wid, ci){
   const w = findWork(wid), c = w && w.chapters[ci];
-  return c ? c.paths.map(pubUrl) : [];
+  return c ? (w.original ? c.paths : c.paths.map(pubUrl)) : [];
 }
 
 /* ---------- Storage: envio, remoção e limpeza ---------- */
