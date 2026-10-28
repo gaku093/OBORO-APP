@@ -3,12 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Oboro</title>
+<title>Oboro — quadrinhos da comunidade</title>
 <meta name="theme-color" content="#FC9900">
 <meta name="description" content="Oboro: leia e publique quadrinhos da comunidade.">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!-- Content-Security-Policy: só aceita scripts do próprio site e do jsDelivr (SDK do Supabase).
+     Imagens e conexões ficam restritas ao seu projeto Supabase. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://dvreimjduimzwouxkrdl.supabase.co; connect-src 'self' https://dvreimjduimzwouxkrdl.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap">
+<link rel="preconnect" href="https://dvreimjduimzwouxkrdl.supabase.co" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<link rel="icon" href="avatar.jpg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,14 +22,15 @@
   <div id="screen" class="gut"><div class="col" id="view"></div></div>
   <nav class="tabbar" id="tabbar" aria-label="Navegação principal"><div class="col">
     <button class="tab" data-act="tab" data-tab="home" aria-label="Início"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 5 2 32h9v26h17V40h8v18h17V32h9z" fill="#fff"/></svg></button>
-    <button class="tab" data-act="tab" data-tab="search" aria-label="Buscar"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="26" cy="26" r="17" fill="none" stroke="#fff" stroke-width="7"/><path d="M38 38 57 57" stroke="#FFD43B" stroke-width="9" stroke-linecap="round"/></svg></button>
+    <button class="tab" data-act="tab" data-tab="search" aria-label="Buscar"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="26" cy="26" r="17" fill="none" stroke="#fff" stroke-width="7"/><path d="M38 38 57 57" stroke="#FC9900" stroke-width="9" stroke-linecap="round"/></svg></button>
     <button class="tab" data-act="tab" data-tab="profile" aria-label="Perfil"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="31" fill="#C9C9C9"/><circle cx="32" cy="24" r="10" fill="#fff"/><path d="M11 53c3-12 12-16 21-16s18 4 21 16c-5 5-12 8-21 8s-16-3-21-8z" fill="#fff"/></svg></button>
   </div></nav>
 </div>
 <div id="reader" class="reader" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
